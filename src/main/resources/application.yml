@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: shelfwise
+  datasource:
+    url: jdbc:h2:mem:shelfwise;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: true
+  h2:
+    console:
+      enabled: true
+
+server:
+  port: 8080
+
+shelfwise:
+  max-loans-per-member: 5
+  loan-period-days: 21
+  fine-per-day: 0.50
+  # max-renewals: 2
+  overdue-cron: "0 0 2 * * *"
+
+logging:
+  level:
+    com.shelfwise: DEBUG
