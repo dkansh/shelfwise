@@ -38,6 +38,11 @@ public class ReservationController {
         return reservationService.getQueueForBook(bookId);
     }
 
+    @GetMapping("/member/{memberId}")
+    public List<Reservation> getForMember(@PathVariable Long memberId) {
+        return reservationService.getReservationsForMember(memberId);
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> cancel(@PathVariable Long id) {
         reservationService.cancelReservation(id);

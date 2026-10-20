@@ -1,5 +1,6 @@
 package com.shelfwise.model;
 
+import java.time.LocalDate;
 import java.util.Date;
 
 import jakarta.persistence.Entity;
@@ -22,10 +23,16 @@ public class Member {
 
     private String email;
 
+    private String phone;
+
+    private String address;
+
     private MembershipType membershipType;
 
     @Temporal(TemporalType.DATE)
     private Date joinedDate;
+
+    private LocalDate membershipExpiry;
 
     private boolean active;
 
@@ -53,6 +60,22 @@ public class Member {
         this.email = email;
     }
 
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
     public MembershipType getMembershipType() {
         return membershipType;
     }
@@ -67,6 +90,14 @@ public class Member {
 
     public void setJoinedDate(Date joinedDate) {
         this.joinedDate = joinedDate;
+    }
+
+    public LocalDate getMembershipExpiry() {
+        return membershipExpiry;
+    }
+
+    public void setMembershipExpiry(LocalDate membershipExpiry) {
+        this.membershipExpiry = membershipExpiry;
     }
 
     public boolean isActive() {

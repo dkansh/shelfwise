@@ -1,0 +1,7 @@
+Hi {{name}},
+
+Good news! "{{title}}" is back and waiting for you at the front desk.
+
+We'll keep it for you for 3 days. After that it goes to the next person in line.
+
+The Shelfwise team

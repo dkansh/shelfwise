@@ -1,0 +1,21 @@
+# production profile: SPRING_PROFILES_ACTIVE=prod
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/shelfwise
+    username: ${DB_USER:shelfwise}
+    password: ${DB_PASSWORD:shelfwise}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  h2:
+    console:
+      enabled: false
+
+shelfwise:
+  notifications:
+    email:
+      enabled: true
+
+logging:
+  level:
+    com.shelfwise: INFO

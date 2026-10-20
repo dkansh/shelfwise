@@ -12,16 +12,55 @@ spring:
   h2:
     console:
       enabled: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+  # mail:
+  #   host: smtp.gmail.com
+  #   port: 587
+  #   username: shelfwise.library@gmail.com
+  #   password: ${MAIL_PASSWORD}
 
 server:
   port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
 
 shelfwise:
   max-loans-per-member: 5
   loan-period-days: 21
   fine-per-day: 0.50
   # max-renewals: 2
+  max-outstanding-fine: 10.00
+  reservation-hold-days: 3
   overdue-cron: "0 0 2 * * *"
+  holidays:
+    - 2026-12-25
+    - 2026-12-26
+    - 2027-01-01
+  jwt:
+    secret: shelfwise-super-secret-key-change-me-please-1234567890
+    expiration-ms: 86400000
+  rate-limit:
+    requests-per-minute: 100
+  scheduling:
+    enabled: false # TODO turn on in prod
+  notifications:
+    email:
+      enabled: false
+      from: no-reply@shelfwise.local
 
 logging:
   level:

@@ -1,5 +1,6 @@
 package com.shelfwise.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -7,22 +8,31 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.shelfwise.config.LibraryProperties;
 import com.shelfwise.dto.LoanRequest;
 import com.shelfwise.dto.LoanResponse;
+import com.shelfwise.event.BookReturnedEvent;
+import com.shelfwise.event.LoanCreatedEvent;
 import com.shelfwise.exception.BookNotAvailableException;
 import com.shelfwise.exception.LoanLimitExceededException;
 import com.shelfwise.exception.ResourceNotFoundException;
+import com.shelfwise.fines.FineService;
 import com.shelfwise.model.Book;
+import com.shelfwise.model.BookCopy;
+import com.shelfwise.model.CopyStatus;
 import com.shelfwise.model.Loan;
 import com.shelfwise.model.LoanStatus;
 import com.shelfwise.model.Member;
+import com.shelfwise.model.Reservation;
+import com.shelfwise.repository.BookCopyRepository;
 import com.shelfwise.repository.BookRepository;
 import com.shelfwise.repository.LoanRepository;
 import com.shelfwise.repository.MemberRepository;
+import com.shelfwise.repository.ReservationRepository;
 
 @Service
 public class LoanService {
@@ -36,18 +46,33 @@ public class LoanService {
     private final LoanRepository loanRepository;
     private final BookRepository bookRepository;
     private final MemberRepository memberRepository;
+    private final BookCopyRepository bookCopyRepository;
+    private final ReservationRepository reservationRepository;
     private final NotificationService notificationService;
+    private final FineService fineService;
+    private final LibraryCalendarService calendarService;
+    private final ApplicationEventPublisher eventPublisher;
     private final LibraryProperties libraryProperties;
 
     public LoanService(LoanRepository loanRepository,
                        BookRepository bookRepository,
                        MemberRepository memberRepository,
+                       BookCopyRepository bookCopyRepository,
+                       ReservationRepository reservationRepository,
                        NotificationService notificationService,
+                       FineService fineService,
+                       LibraryCalendarService calendarService,
+                       ApplicationEventPublisher eventPublisher,
                        LibraryProperties libraryProperties) {
         this.loanRepository = loanRepository;
         this.bookRepository = bookRepository;
         this.memberRepository = memberRepository;
+        this.bookCopyRepository = bookCopyRepository;
+        this.reservationRepository = reservationRepository;
         this.notificationService = notificationService;
+        this.fineService = fineService;
+        this.calendarService = calendarService;
+        this.eventPublisher = eventPublisher;
         this.libraryProperties = libraryProperties;
     }
 
@@ -69,6 +94,12 @@ public class LoanService {
         if (!member.isActive()) {
             throw new IllegalStateException("Member " + member.getId() + " is not active");
         }
+        // TODO: also check member.getMembershipExpiry()
+
+        BigDecimal owed = fineService.getOutstandingBalance(member.getId());
+        if (owed.compareTo(libraryProperties.getMaxOutstandingFine()) > 0) {
+            throw new IllegalStateException("Member owes $" + owed + " in fines, please pay before borrowing");
+        }
 
         long activeLoans = loanRepository.countByMemberIdAndStatus(member.getId(), LoanStatus.ACTIVE);
         if (activeLoans >= MAX_LOANS) {
@@ -80,7 +111,20 @@ public class LoanService {
             throw new BookNotAvailableException("No copies of '" + book.getTitle() + "' are available");
         }
 
-        // TODO: if somebody reserved this book they should get it first
+        // if the book is waiting at the desk for somebody else, they get it first
+        List<Reservation> ready = reservationRepository.findByBookIdAndStatusOrderByReservedAtAsc(book.getId(), "READY");
+        if (!ready.isEmpty() && !ready.get(0).getMemberId().equals(member.getId())) {
+            throw new BookNotAvailableException("'" + book.getTitle() + "' is reserved for another member");
+        }
+
+        BookCopy copy = null;
+        if (request.getCopyBarcode() != null) {
+            copy = bookCopyRepository.findByBarcode(request.getCopyBarcode())
+                    .orElseThrow(() -> new ResourceNotFoundException("No copy with barcode " + request.getCopyBarcode()));
+            copy.setStatus(CopyStatus.ON_LOAN);
+            bookCopyRepository.save(copy);
+        }
+        // TODO: pick a physical copy automatically when no barcode is sent
 
         book.setAvailableCopies(book.getAvailableCopies() - 1);
         bookRepository.save(book);
@@ -88,6 +132,7 @@ public class LoanService {
         Loan loan = new Loan();
         loan.setBook(book);
         loan.setMember(member);
+        loan.setCopy(copy);
         loan.setLoanDate(LocalDate.now());
         loan.setDueDate(LocalDate.now().plusDays(libraryProperties.getLoanPeriodDays()));
         loan.setStatus(LoanStatus.ACTIVE);
@@ -95,6 +140,7 @@ public class LoanService {
 
         log.debug("Member {} checked out book {}", member.getId(), book.getId());
         notificationService.sendCheckoutConfirmation(member.getEmail(), book.getTitle(), saved.getDueDate());
+        eventPublisher.publishEvent(new LoanCreatedEvent(saved.getId(), member.getId(), book.getId()));
 
         return toResponse(saved);
     }
@@ -111,14 +157,47 @@ public class LoanService {
         book.setAvailableCopies(book.getAvailableCopies() + 1);
         // book gets saved automatically because of @Transactional (i think)
 
-        // TODO: tell ReservationService so the next person in the queue gets notified
+        if (loan.getCopy() != null) {
+            loan.getCopy().setStatus(CopyStatus.AVAILABLE);
+        }
 
-        return toResponse(loanRepository.save(loan));
+        if (loan.getFineAmount() > 0) {
+            fineService.createFineForLoan(loan, loan.getFineAmount());
+        }
+
+        Loan saved = loanRepository.save(loan);
+        eventPublisher.publishEvent(new BookReturnedEvent(saved.getId(), book.getId(),
+                loan.getMember().getId(), saved.getFineAmount()));
+
+        return toResponse(saved);
     }
 
+    /**
+     * Extends the due date of a loan by another loan period.
+     * Not allowed if someone else is waiting for the book.
+     */
+    @Transactional
     public LoanResponse renewLoan(Long loanId) {
-        // TODO: renewals. rules: max shelfwise.max-renewals times, not allowed if the book is reserved
-        throw new UnsupportedOperationException("Renewing loans is not implemented yet");
+        Loan loan = getLoan(loanId);
+
+        if (loan.getStatus() != LoanStatus.ACTIVE) {
+            throw new IllegalStateException("Only active loans can be renewed");
+        }
+        if (loan.getRenewalCount() > libraryProperties.getMaxRenewals()) {
+            throw new IllegalStateException("Loan has already been renewed " + loan.getRenewalCount() + " times");
+        }
+
+        List<Reservation> queue = reservationRepository
+                .findByBookIdAndStatusOrderByReservedAtAsc(loan.getBook().getId(), "PENDING");
+        if (!queue.isEmpty()) {
+            throw new IllegalStateException("Someone is waiting for this book, it can't be renewed");
+        }
+
+        LocalDate newDueDate = loan.getDueDate().plusDays(libraryProperties.getLoanPeriodDays());
+        loan.setDueDate(calendarService.nextOpenDay(newDueDate));
+        loan.setRenewalCount(loan.getRenewalCount() + 1);
+
+        return toResponse(loanRepository.save(loan));
     }
 
     public Loan getLoan(Long loanId) {

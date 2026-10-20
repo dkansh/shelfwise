@@ -60,4 +60,14 @@ public class MemberController {
     public long getMembershipDays(@PathVariable Long id) {
         return memberService.getMembershipDays(id);
     }
+
+    @PutMapping("/{id}/renew-membership")
+    public Member renewMembership(@PathVariable Long id, @RequestParam(defaultValue = "12") int months) {
+        return memberService.renewMembership(id, months);
+    }
+
+    @GetMapping("/expiring")
+    public List<Member> expiring(@RequestParam(defaultValue = "30") int days) {
+        return memberService.getMembersExpiringWithin(days);
+    }
 }

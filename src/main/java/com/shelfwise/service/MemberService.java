@@ -18,6 +18,9 @@ public class MemberService {
     @Autowired
     private MemberRepository memberRepository;
 
+    @Autowired
+    private AuditService auditService;
+
     public List<Member> getAllMembers() {
         return memberRepository.findAll();
     }
@@ -36,6 +39,7 @@ public class MemberService {
             member.setMembershipType(MembershipType.STANDARD);
         }
         member.setJoinedDate(new Date());
+        member.setMembershipExpiry(LocalDate.now().plusYears(1));
         member.setActive(true);
         return memberRepository.save(member);
     }
@@ -47,6 +51,8 @@ public class MemberService {
         }
         existing.setName(updated.getName());
         existing.setEmail(updated.getEmail());
+        existing.setPhone(updated.getPhone());
+        existing.setAddress(updated.getAddress());
         existing.setMembershipType(updated.getMembershipType());
         return memberRepository.save(existing);
     }
@@ -56,6 +62,7 @@ public class MemberService {
         member.setActive(false);
         // TODO: should we block this if the member still has books out?
         memberRepository.save(member);
+        auditService.log("DEACTIVATE_MEMBER", "Member", id, null);
     }
 
     /**
@@ -65,6 +72,33 @@ public class MemberService {
         Member member = getMember(id);
         LocalDate joined = DateUtils.toLocalDate(member.getJoinedDate());
         return DateUtils.daysBetween(joined, LocalDate.now());
+    }
+
+    /**
+     * Extends the membership by the given number of months. If it already expired
+     * the new period starts today.
+     */
+    public Member renewMembership(Long id, int months) {
+        Member member = getMember(id);
+        LocalDate base = member.getMembershipExpiry().isBefore(LocalDate.now())
+                ? LocalDate.now()
+                : member.getMembershipExpiry();
+        member.setMembershipExpiry(base.plusMonths(months));
+        member.setActive(true);
+        return memberRepository.save(member);
+    }
+
+    public List<Member> getMembersExpiringWithin(int days) {
+        return memberRepository.findByMembershipExpiryBetween(LocalDate.now(), LocalDate.now().plusDays(days));
+    }
+
+    public int deactivateExpiredMembers() {
+        List<Member> expired = memberRepository.findByMembershipExpiryBeforeAndActiveTrue(LocalDate.now());
+        for (Member m : expired) {
+            m.setActive(false);
+            memberRepository.save(m);
+        }
+        return expired.size();
     }
 
     // TODO: STUDENT memberships are supposed to expire after 1 year

@@ -35,6 +35,11 @@ public class Loan {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
+    // optional - only set when the librarian scans a physical copy at checkout
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "copy_id")
+    private BookCopy copy;
+
     private LocalDate loanDate;
 
     private LocalDate dueDate;
@@ -46,6 +51,5 @@ public class Loan {
 
     private double fineAmount;
 
-    // for the renewals feature
     private int renewalCount;
 }

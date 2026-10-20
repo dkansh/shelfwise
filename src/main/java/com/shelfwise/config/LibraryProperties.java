@@ -1,5 +1,9 @@
 package com.shelfwise.config;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -20,6 +24,15 @@ public class LibraryProperties {
 
     /** Max number of times a loan can be renewed. */
     private int maxRenewals = 2;
+
+    /** Members who owe more than this can't borrow anything. */
+    private BigDecimal maxOutstandingFine = new BigDecimal("10.00");
+
+    /** How long a reserved book is kept at the desk once it's ready. */
+    private int reservationHoldDays = 3;
+
+    /** Days the library is closed, as yyyy-MM-dd strings. */
+    private List<String> holidays = new ArrayList<>();
 
     private String overdueCron = "0 0 2 * * *";
 
@@ -53,6 +66,30 @@ public class LibraryProperties {
 
     public void setMaxRenewals(int maxRenewals) {
         this.maxRenewals = maxRenewals;
+    }
+
+    public BigDecimal getMaxOutstandingFine() {
+        return maxOutstandingFine;
+    }
+
+    public void setMaxOutstandingFine(BigDecimal maxOutstandingFine) {
+        this.maxOutstandingFine = maxOutstandingFine;
+    }
+
+    public int getReservationHoldDays() {
+        return reservationHoldDays;
+    }
+
+    public void setReservationHoldDays(int reservationHoldDays) {
+        this.reservationHoldDays = reservationHoldDays;
+    }
+
+    public List<String> getHolidays() {
+        return holidays;
+    }
+
+    public void setHolidays(List<String> holidays) {
+        this.holidays = holidays;
     }
 
     public String getOverdueCron() {

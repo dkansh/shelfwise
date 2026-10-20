@@ -1,0 +1,7 @@
+Hi {{name}},
+
+Your Shelfwise membership expires on {{expiryDate}}.
+
+Renew at any branch or online so you don't lose access to your loans and reservations.
+
+The Shelfwise team

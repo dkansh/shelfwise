@@ -1,0 +1,68 @@
+### Shelfwise sample requests (IntelliJ / VS Code REST Client)
+@host = http://localhost:8080
+
+### Login as librarian
+# @name login
+POST {{host}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "librarian",
+  "password": "librarian123"
+}
+
+### save the token from the response here
+@token = {{login.response.body.token}}
+
+### List books
+GET {{host}}/api/v1/books
+
+### Search v2
+GET {{host}}/api/v2/books/search?q=code&availableOnly=true&sort=title,desc
+
+### Check out a book
+POST {{host}}/api/v1/loans/checkout
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "memberId": 1,
+  "bookId": 2
+}
+
+### Return a book
+POST {{host}}/api/v1/loans/1/return
+Authorization: Bearer {{token}}
+
+### Renew a loan
+POST {{host}}/api/v1/loans/1/renew
+Authorization: Bearer {{token}}
+
+### Reserve a book
+POST {{host}}/api/v1/reservations?bookId=5&memberId=2
+Authorization: Bearer {{token}}
+
+### Dashboard
+GET {{host}}/api/v1/reports/dashboard
+Authorization: Bearer {{token}}
+
+### Pay a fine
+POST {{host}}/api/v1/fines/1/pay
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "amount": 1.25,
+  "method": "CASH"
+}
+
+### Import books from CSV
+POST {{host}}/api/v1/data/import/books
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="sample-books.csv"
+
+< ../src/main/resources/import/sample-books.csv
+--boundary--

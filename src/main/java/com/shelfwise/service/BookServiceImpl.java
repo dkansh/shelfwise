@@ -5,6 +5,8 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,9 +23,11 @@ public class BookServiceImpl implements BookService {
     private static final Logger log = LoggerFactory.getLogger(BookServiceImpl.class);
 
     private final BookRepository bookRepository;
+    private final AuditService auditService;
 
-    public BookServiceImpl(BookRepository bookRepository) {
+    public BookServiceImpl(BookRepository bookRepository, AuditService auditService) {
         this.bookRepository = bookRepository;
+        this.auditService = auditService;
     }
 
     @Override
@@ -35,6 +39,7 @@ public class BookServiceImpl implements BookService {
     }
 
     @Override
+    @Cacheable("books")
     public BookDto getBook(Long id) {
         Book book = bookRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Book not found with id " + id));
@@ -78,11 +83,13 @@ public class BookServiceImpl implements BookService {
 
         Book saved = bookRepository.save(book);
         log.info("Created book '{}' with id {}", saved.getTitle(), saved.getId());
+        auditService.log("CREATE_BOOK", "Book", saved.getId(), saved.getTitle());
         return toDto(saved);
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = "books", key = "#id")
     public BookDto updateBook(Long id, CreateBookRequest request) {
         Book book = bookRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Book not found with id " + id));
@@ -101,6 +108,7 @@ public class BookServiceImpl implements BookService {
     public void deleteBook(Long id) {
         // TODO: what if the book is checked out right now?
         bookRepository.deleteById(id);
+        auditService.log("DELETE_BOOK", "Book", id, null);
     }
 
     private BookDto toDto(Book book) {

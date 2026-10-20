@@ -1,0 +1,8 @@
+Hi,
+
+You just borrowed "{{title}}" from Shelfwise.
+
+Please bring it back by {{dueDate}}. Late returns are charged per day.
+
+Happy reading!
+The Shelfwise team

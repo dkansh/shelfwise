@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.shelfwise.dto.LoanRequest;
 import com.shelfwise.dto.LoanResponse;
 import com.shelfwise.model.Loan;
+import com.shelfwise.service.AuthService;
 import com.shelfwise.service.LoanService;
 
 @RestController
@@ -26,9 +27,11 @@ public class LoanController {
     private static final Logger log = LoggerFactory.getLogger(LoanController.class);
 
     private final LoanService loanService;
+    private final AuthService authService;
 
-    public LoanController(LoanService loanService) {
+    public LoanController(LoanService loanService, AuthService authService) {
         this.loanService = loanService;
+        this.authService = authService;
     }
 
     @PostMapping("/checkout")
@@ -51,6 +54,11 @@ public class LoanController {
     @PostMapping("/{id}/renew")
     public LoanResponse renewLoan(@PathVariable Long id) {
         return loanService.renewLoan(id);
+    }
+
+    @GetMapping("/me")
+    public List<LoanResponse> myLoans() {
+        return loanService.getLoansForMember(authService.getCurrentMemberId());
     }
 
     @GetMapping("/member/{memberId}")

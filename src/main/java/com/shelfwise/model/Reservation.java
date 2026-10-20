@@ -26,6 +26,11 @@ public class Reservation {
 
     private LocalDateTime reservedAt;
 
-    // PENDING, FULFILLED, CANCELLED
+    // PENDING, READY, FULFILLED, CANCELLED, EXPIRED
     private String status;
+
+    // set when the book comes back and the member is told to pick it up
+    private LocalDateTime notifiedAt;
+
+    private LocalDateTime expiresAt;
 }

@@ -27,6 +27,9 @@ class BookServiceImplTest {
     @Mock
     private BookRepository bookRepository;
 
+    @Mock
+    private AuditService auditService;
+
     @InjectMocks
     private BookServiceImpl bookService;
 

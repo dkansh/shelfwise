@@ -1,0 +1,7 @@
+Hi {{name}},
+
+"{{title}}" was due on {{dueDate}} and hasn't been returned yet.
+
+Your fine so far is ${{fine}}. Please return the book as soon as possible.
+
+The Shelfwise team
