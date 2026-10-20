@@ -165,3 +165,7 @@ More background in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - [ ] Waiting lists for events
 - [ ] Move fully to PostgreSQL
 - [ ] Frontend
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
